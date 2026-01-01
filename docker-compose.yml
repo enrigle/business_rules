@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: business-rules-streamlit
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      # Hot-reload: changes to rules don't require rebuild
+      - ./config:/app/config
+      # Hot-reload: code changes (requires watchdog in requirements.txt)
+      - ./src:/app/src
+      - ./streamlit:/app/streamlit
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

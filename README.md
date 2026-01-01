@@ -7,10 +7,17 @@ Rule-based fraud detection engine with LLM explanations.
 ## Quick Start
 
 ```bash
-# Clone and install
+# Clone repo
 git clone <repo-url>
 cd business_rules
-pip install -e ".[streamlit,notebook,dev]"
+
+# Create virtual environment with uv
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+uv pip install -r requirements.txt
+uv pip install --no-deps -e .
 
 # Setup environment
 cp .env.example .env
@@ -20,7 +27,8 @@ cp .env.example .env
 cd streamlit
 streamlit run app.py
 
-# Or run Jupyter notebook
+# Or run Jupyter notebook (requires additional deps)
+uv pip install -e ".[notebook]"
 jupyter notebook notebooks/decision_engine.ipynb
 ```
 
@@ -63,11 +71,32 @@ business_rules/
 - **Synthetic Data**: Generate realistic fraud test data
 - **Anti-hallucination Design**: LLM never influences decisions
 
+## Docker Deployment
+
+```bash
+# Quick start with docker-compose
+cp .env.example .env
+# Add ANTHROPIC_API_KEY to .env
+docker-compose up --build
+
+# Access app at http://localhost:8501
+
+# Or use standalone Docker
+docker build -t business-rules .
+docker run -p 8501:8501 --env-file .env business-rules
+```
+
+**Features:**
+- Multi-stage build for smaller image (~200MB)
+- Hot-reload enabled (edit `config/rules_v1.yaml` or `src/` without rebuild)
+- Health checks included
+- Volume mounts for development
+
 ## Development
 
 ```bash
-# Install with dev dependencies
-pip install -e ".[dev]"
+# Install dev dependencies
+uv pip install -e ".[dev]"
 
 # Format code
 black src/
