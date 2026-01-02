@@ -1,9 +1,6 @@
-# config/rules_v1.yaml
-version: "1.0"
-domain: "fraud_detection"
-created_at: "2025-01-15"
-
-# Feature definitions (for validation)
+version: '1.0'
+domain: fraud_detection
+created_at: '2025-01-15'
 features:
   transaction_amount:
     type: float
@@ -11,71 +8,153 @@ features:
     max: 1000000
   transaction_velocity_24h:
     type: int
-    description: "Number of transactions in last 24 hours"
+    description: Number of transactions in last 24 hours
   is_new_device:
     type: bool
   country_mismatch:
     type: bool
-    description: "Transaction country differs from account country"
+    description: Transaction country differs from account country
   merchant_category:
     type: string
-    allowed: ["retail", "travel", "gambling", "crypto", "electronics"]
-
-# Decision tree rules (evaluated top-to-bottom, first match wins)
+    allowed:
+    - retail
+    - travel
+    - gambling
+    - crypto
+    - electronics
 rules:
-  - id: "RULE_001"
-    name: "High-value crypto from new device"
-    conditions:
-      - field: "transaction_amount"
-        operator: ">"
-        value: 5000
-      - field: "merchant_category"
-        operator: "=="
-        value: "crypto"
-      - field: "is_new_device"
-        operator: "=="
-        value: true
-    logic: "AND"
-    outcome:
-      risk_score: 95
-      decision: "BLOCK"
-      reason: "High-value crypto transaction from unrecognized device"
-
-  - id: "RULE_002"
-    name: "Velocity spike with country mismatch"
-    conditions:
-      - field: "transaction_velocity_24h"
-        operator: ">"
-        value: 10
-      - field: "country_mismatch"
-        operator: "=="
-        value: true
-    logic: "AND"
-    outcome:
-      risk_score: 85
-      decision: "REVIEW"
-      reason: "Unusual transaction velocity from foreign location"
-
-  - id: "RULE_003"
-    name: "Gambling high amount"
-    conditions:
-      - field: "transaction_amount"
-        operator: ">"
-        value: 1000
-      - field: "merchant_category"
-        operator: "=="
-        value: "gambling"
-    logic: "AND"
-    outcome:
-      risk_score: 70
-      decision: "REVIEW"
-      reason: "Large gambling transaction"
-
-  - id: "DEFAULT"
-    name: "Default - Allow"
-    conditions: []
-    logic: "ALWAYS"
-    outcome:
-      risk_score: 10
-      decision: "ALLOW"
-      reason: "No risk indicators detected"
+- id: RULE_001
+  name: High-value crypto from new device
+  conditions:
+  - field: transaction_amount
+    operator: '>'
+    value: 5000
+  - field: merchant_category
+    operator: ==
+    value: crypto
+  - field: is_new_device
+    operator: ==
+    value: true
+  logic: AND
+  outcome:
+    risk_score: 95
+    decision: BLOCK
+    reason: High-value crypto transaction from unrecognized device
+- id: RULE_002
+  name: Velocity spike with country mismatch
+  conditions:
+  - field: transaction_velocity_24h
+    operator: '>'
+    value: 10
+  - field: country_mismatch
+    operator: ==
+    value: true
+  logic: AND
+  outcome:
+    risk_score: 85
+    decision: REVIEW
+    reason: Unusual transaction velocity from foreign location
+- id: RULE_003
+  name: Gambling high amount
+  conditions:
+  - field: transaction_amount
+    operator: '>'
+    value: 1000
+  - field: merchant_category
+    operator: ==
+    value: gambling
+  logic: AND
+  outcome:
+    risk_score: 70
+    decision: REVIEW
+    reason: Large gambling transaction
+- id: RULE_004
+  name: Expensive electronics from new accounts
+  conditions:
+  - field: transaction_amount
+    operator: '>'
+    value: 2000.0
+  - field: merchant_category
+    operator: ==
+    value: electronics
+  - field: account_age_days
+    operator: <
+    value: 30
+  logic: AND
+  outcome:
+    risk_score: 75
+    decision: REVIEW
+    reason: High-value electronics purchase from new account
+- id: RULE_005
+  name: Expensive electronics from new accounts
+  conditions:
+  - field: transaction_amount
+    operator: '>'
+    value: 2000.0
+  - field: account_age_days
+    operator: '>'
+    value: 30
+  - field: is_new_device
+    operator: ==
+    value: true
+  logic: OR
+  outcome:
+    risk_score: 75
+    decision: REVIEW
+    reason: kkk
+- id: RULE_006
+  name: Electronic devise risky
+  conditions:
+  - field: transaction_amount
+    operator: '>'
+    value: 3000.0
+  - field: account_age_days
+    operator: <
+    value: 30
+  logic: AND
+  outcome:
+    risk_score: 75
+    decision: REVIEW
+    reason: check transaction
+- id: RULE_007
+  name: New devise electronic
+  conditions:
+  - field: is_new_device
+    operator: ==
+    value: true
+  - field: transaction_amount
+    operator: '>'
+    value: 3000.0
+  - field: account_age_days
+    operator: <
+    value: 30
+  logic: AND
+  outcome:
+    risk_score: 75
+    decision: REVIEW
+    reason: review this
+- id: RULE_008
+  name: new device high amount
+  conditions:
+  - field: is_new_device
+    operator: ==
+    value: true
+  - field: transaction_amount
+    operator: '>'
+    value: 300.0
+  - field: account_age_days
+    operator: <
+    value: 30
+  logic: AND
+  outcome:
+    risk_score: 74
+    decision: REVIEW
+    reason: new device
+- id: DEFAULT
+  name: Default - Allow
+  conditions: []
+  logic: ALWAYS
+  outcome:
+    risk_score: 10
+    decision: ALLOW
+    reason: No risk indicators detected

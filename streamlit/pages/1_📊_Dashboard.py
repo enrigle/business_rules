@@ -40,7 +40,9 @@ st.markdown("""
 
 # Show current rules as table for now
 try:
-    config_mgr = ConfigManager("../../config")
+    # Use absolute path relative to this file
+    config_path = Path(__file__).parent.parent.parent / "config"
+    config_mgr = ConfigManager(str(config_path))
     config = config_mgr.load_rules()
     rules = config.get('rules', [])
 

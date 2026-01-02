@@ -119,86 +119,140 @@ The app saved this rule to `config/rules_v1.yaml`:
 ### Quick Verification (Dashboard)
 
 1. Click "📊 Dashboard" in the sidebar
-2. Scroll down to see all your rules
-3. Find your rule in the list and click to expand it
-4. Verify:
+2. Look below the "🚧 Dashboard features coming in Phase 3" section
+3. You should see "Current Rules (4)" or similar (the number shows how many rules you have)
+4. Find your rule in the list and click to expand it
+5. Verify:
    - ✅ Name is correct
    - ✅ All three conditions are listed
    - ✅ Decision shows "REVIEW"
    - ✅ Risk score shows "75/100"
 
-### Full Testing (Jupyter Notebook)
+**Troubleshooting**: If you see "⚠️ No rules file found":
+- Stop the Streamlit app (press Ctrl+C in the terminal)
+- Restart it: `cd streamlit && streamlit run app.py`
+- Alternatively, open `config/rules_v1.yaml` in a text editor to verify your rule was saved
 
-**Note**: The Test Transactions page in the web app is coming soon. For now, use the Jupyter notebook to test with real data.
+### Full Testing (Web App)
 
-1. **Open the notebook**:
-   ```bash
-   jupyter notebook notebooks/decision_engine.ipynb
-   ```
+Test your rule with real transaction data using the Test Transactions page.
 
-2. **Run the setup cells** (first 3 cells):
-   - Click the first cell and press Shift+Enter
-   - Repeat for cells 2 and 3
-   - This loads the rules and creates test data
+1. **Navigate to Test Transactions**:
+   - Click "🧪 Test Transactions" in the sidebar
 
-3. **Find the test transaction section**:
-   - Look for the cell that says "Generate test transactions"
-   - Run it to create 50 sample transactions
+2. **Create test transactions** (choose one method):
 
-4. **Run the evaluation cells**:
-   - The notebook will process all transactions through your rules
-   - Results appear in a table below
+   **Option A: Generate Random Transactions**
+   - Click the "🎲 Generate Random" tab
+   - Select how many transactions (3-5 recommended)
+   - Click "🎲 Generate Transactions"
+   - The app creates realistic random transactions for you
 
-5. **Look for your rule**:
-   - Find rows where "Matched Rule" shows your rule name
-   - Check the "Decision" column shows "REVIEW"
-   - Check the "Risk Score" column shows "75"
+   **Option B: Create Manually**
+   - Click the "✍️ Manual Entry" tab
+   - Fill in the form:
+     * Transaction Amount: `2500` (should trigger your rule)
+     * Merchant Category: Select `electronics`
+     * Account Age: `15` days (less than 30)
+     * Leave other fields as defaults
+   - Click "➕ Add Transaction"
+   - Repeat to create more test cases
+
+3. **Edit transactions (optional)**:
+   - You'll see a table with all your transactions
+   - Click any cell to edit the value
+   - Try changing amounts or categories to test different scenarios
+
+3.5. **Select which rules to test (optional)**:
+   - Click "⚙️ Advanced: Select Rules to Test" to expand
+   - By default, all rules are enabled
+   - Uncheck rules you want to skip (useful for testing one rule at a time)
+   - Use "Disable All" to test with only the DEFAULT rule
+
+4. **Run the tests**:
+   - Click "▶️ Run Tests" button
+   - Wait a few seconds while the app evaluates
+
+5. **Review results**:
+   - Summary shows: How many ALLOWED / REVIEW / BLOCKED
+   - Results table shows each transaction with color coding:
+     * Green = ALLOWED
+     * Yellow = REVIEW (your rule should show here)
+     * Red = BLOCKED
+   - Check the "Matched Rule" column to see which rule caught each transaction
+
+6. **Get AI explanation (optional)**:
+   - If you have an API key configured
+   - Scroll down to "🤖 AI Explanations"
+   - Select a transaction from the dropdown
+   - Click "🤖 Get AI Explanation"
+   - Read the detailed explanation of why it was flagged
 
 ---
 
 ## Understanding the Output
 
-When a transaction matches your rule, you'll see:
+### Summary Metrics
 
-### Without AI Explanation (no API key):
-```
-Transaction: txn_12345
-Matched Rule: Expensive electronics from new accounts
-Decision: REVIEW
-Risk Score: 75/100
-Reason: High-value electronics purchase from new account
-```
+At the top of the results, you'll see:
+- **Total Tested**: How many transactions were evaluated
+- **✅ ALLOWED**: Transactions approved (green)
+- **⚠️ REVIEW**: Transactions flagged for manual review (yellow)
+- **🚫 BLOCKED**: Transactions automatically declined (red)
 
-### With AI Explanation (API key configured):
-```
-Transaction: txn_12345
-Matched Rule: Expensive electronics from new accounts
-Decision: REVIEW
-Risk Score: 75/100
-Reason: High-value electronics purchase from new account
+### Results Table
 
-AI Explanation:
-This transaction was flagged for manual review because it involves a $2,500
-electronics purchase from an account that was created only 15 days ago. This
-pattern is often associated with fraudsters using stolen payment methods to
-buy high-value, easily resellable items like phones and laptops.
+Each row shows one transaction:
 
-Confidence: HIGH
-Needs Human Review: Yes
+| Field | What It Means | Example |
+|-------|---------------|---------|
+| Transaction ID | Unique identifier | `txn_001`, `manual_001` |
+| Decision | What happened to this transaction | `REVIEW` (yellow background) |
+| Risk Score | Risk level from 0-100 | `75` (shown as progress bar) |
+| Matched Rule | Which rule caught it | `Expensive electronics from new accounts` |
+| Reason | Why this rule triggered | `High-value electronics purchase from new account` |
 
-Questions to investigate:
+**Color coding:**
+- 🟢 Green row = ALLOWED (low risk)
+- 🟡 Yellow row = REVIEW (medium risk - needs your attention)
+- 🔴 Red row = BLOCKED (high risk)
+
+### AI Explanations (with API key)
+
+If you request an AI explanation for a specific transaction, you'll see:
+
+**AI Explanation:**
+> This transaction was flagged for manual review because it involves a $2,500
+> electronics purchase from an account that was created only 15 days ago. This
+> pattern is often associated with fraudsters using stolen payment methods to
+> buy high-value, easily resellable items like phones and laptops.
+
+**Confidence:** 🟢 HIGH (or 🟡 MEDIUM, 🔴 LOW)
+
+**Needs Review:** ✅ Yes (human analyst should investigate)
+
+**Questions to Investigate:**
 - Is the shipping address the same as the account registration address?
 - Has the customer made any smaller "test" purchases before this one?
 - Is the device used for this purchase the same as the registration device?
+
+**Important:** The AI explanation describes WHY the rule triggered, but the decision itself comes from your deterministic rule - the AI never changes the outcome.
+
+### Advanced: Jupyter Notebook Testing
+
+For advanced users who need to test large batches of transactions (50+ at once), you can use the Jupyter notebook:
+
+```bash
+jupyter notebook notebooks/decision_engine.ipynb
 ```
 
-**Key fields explained:**
-- **Matched Rule**: Which rule caught this transaction (first match wins)
-- **Decision**: ALLOW (approve), REVIEW (flag for you), or BLOCK (auto-decline)
-- **Risk Score**: 0-100 (higher = riskier)
-- **AI Explanation**: Plain English explanation of why this is suspicious
-- **Confidence**: How sure the AI is about its explanation (not the decision)
-- **Questions**: Suggested investigation steps for your review
+The notebook allows you to:
+- Generate hundreds of transactions at once
+- Export results to CSV
+- Run custom analysis on the data
+- Batch generate LLM explanations for all flagged transactions
+
+This is useful for performance testing or analyzing rule effectiveness across large datasets.
 
 ---
 
@@ -288,6 +342,34 @@ Every rule file must have a DEFAULT rule at the end that catches all transaction
     decision: "ALLOW"
     reason: "No risk indicators detected"
 ```
+
+---
+
+### "Can I test specific rules in isolation?"
+
+**Yes!** Use the rule selection feature in the Test Transactions page.
+
+1. Create your test transactions
+2. Click "⚙️ Advanced: Select Rules to Test" (expander)
+3. Uncheck rules you want to disable
+4. Click "Run Tests"
+
+**Use cases:**
+- Test one rule at a time to verify it works correctly
+- Compare results with/without a specific rule
+- Debug rule interactions
+- A/B test different rule configurations
+
+**Quick controls:**
+- "Enable All" - test with all rules (production simulation)
+- "Disable All" - only DEFAULT rule runs (everything allowed)
+- Individual checkboxes - custom combinations
+
+**Important notes:**
+- **DEFAULT rule always runs** - Cannot be disabled. It catches transactions that don't match any other rule.
+  - Example: If you disable all custom rules, every transaction will match DEFAULT (usually ALLOW)
+  - This ensures every transaction gets a decision
+- **Rule selection is for testing only** - Production always uses all active rules in order
 
 ---
 

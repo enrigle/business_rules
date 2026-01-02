@@ -35,7 +35,8 @@ if 'conditions' not in st.session_state:
     st.session_state.conditions = []
 
 # Initialize managers
-config_mgr = ConfigManager("../config")
+config_path = Path(__file__).parent.parent / "config"
+config_mgr = ConfigManager(str(config_path))
 data_validator = DataValidator()
 
 # Sidebar
