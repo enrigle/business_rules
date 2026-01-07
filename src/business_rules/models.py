@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+from typing import Literal, Optional, Any
 from enum import Enum
 
 class Decision(str, Enum):
@@ -40,3 +40,28 @@ class FinalDecisionOutput(BaseModel):
     confidence: Confidence
     needs_human_review: bool
     clarifying_questions: list[str]
+
+class ConditionEvaluation(BaseModel):
+    """Result of evaluating a single condition"""
+    field: str
+    operator: str
+    expected_value: Any
+    actual_value: Any
+    passed: bool
+
+class RuleEvaluation(BaseModel):
+    """Result of evaluating a single rule"""
+    rule_id: str
+    rule_name: str
+    conditions: list[ConditionEvaluation]
+    logic: str
+    matched: bool
+    timestamp_ms: float
+
+class EvaluationTrace(BaseModel):
+    """Complete trace of rule evaluation process"""
+    transaction_id: str
+    evaluated_rules: list[RuleEvaluation]
+    matched_rule_index: int  # Index in evaluated_rules list
+    total_evaluation_time_ms: float
+    config_version: str

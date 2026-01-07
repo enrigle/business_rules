@@ -39,5 +39,18 @@ config/backups/*.yaml
 htmlcov/
 .pytest_cache/
 
+# React / Node.js (frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.turbo/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
 # Claude Code (optional - uncomment if you don't want to commit)
 # .claude/

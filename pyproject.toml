@@ -18,12 +18,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-streamlit = [
-    "streamlit>=1.30.0",
-    "streamlit-ace>=0.1.1",
-    "plotly>=5.18.0",
-    "networkx>=3.2.0",
-    "watchdog>=3.0.0",
+api = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "websockets>=13.0",
 ]
 notebook = [
     "jupyter>=1.1.0",
