@@ -100,24 +100,37 @@ The Python backend provides a REST API wrapping the core business logic:
 
 Modern visual flowchart editor for building fraud detection rules:
 
-**Current Features (Phase 2 Complete):**
-- Dashboard with rule statistics and navigation
-- TypeScript API client with TanStack Query
-- React Router for page navigation
-- Environment-based configuration
+**Current Features (Phase 3 Complete):**
+- ✅ Dashboard with rule statistics and navigation
+- ✅ TypeScript API client with TanStack Query
+- ✅ React Router for page navigation
+- ✅ Visual drag-and-drop rule editor with ReactFlow
+- ✅ Real-time execution tracing with color-coded paths
+- ✅ Transaction testing with visual trace overlay
+- ✅ Auto-layout for complex decision trees (dagre algorithm)
+- ✅ Form-based rule editing with live preview
+- ✅ CRUD operations (Create, Read, Update, Delete rules)
+- ✅ Rule reordering via drag-and-drop
+- ✅ Path highlighting for matched rules (green glow)
 
-**Upcoming Features (Phase 3-4):**
-- Visual drag-and-drop rule editor with ReactFlow
-- Real-time execution tracing with color-coded paths
-- Transaction testing with visual trace overlay
-- Auto-layout for complex decision trees
-- Form-based rule editing with live preview
+**Custom Node Types:**
+- TransactionInputNode (blue) - Start node showing input fields
+- RuleNode (purple) - Rule cards with conditions and decisions
+- ConditionGroupNode (orange/pink) - AND/OR logic visualization
+- DecisionOutputNode (green/yellow/red) - ALLOW/REVIEW/BLOCK outcomes
+
+**Upcoming Features (Phase 4):**
+- Batch transaction testing
+- Rule performance metrics and analytics
+- Side-by-side rule comparison
+- Export test results to CSV
 
 **Tech Stack:**
-- React 18 + TypeScript + Vite
-- ReactFlow for flowchart visualization
+- React 19.2 + TypeScript + Vite
+- ReactFlow 12.10 for flowchart visualization
 - TanStack Query for server state management
 - Zustand for client state management
+- dagre for auto-layout algorithm
 - React Router v7 for navigation
 - Tailwind CSS for styling
 
@@ -127,8 +140,10 @@ Modern visual flowchart editor for building fraud detection rules:
 - **Execution Tracing**: Complete path tracking with condition-level details
 - **LLM Explanations**: Human-readable explanations from Claude Sonnet 4
 - **REST API**: FastAPI backend with OpenAPI documentation
-- **Visual Editor**: React + ReactFlow flowchart interface (Phase 2)
+- **Visual Editor**: React + ReactFlow flowchart interface with drag-and-drop
+- **Live Testing**: Instant transaction evaluation with path highlighting
 - **Synthetic Data**: Generate realistic fraud test data
+- **Auto-Layout**: Dagre algorithm for automatic node positioning
 - **Anti-hallucination Design**: LLM never influences decisions
 
 ## API Usage
@@ -210,8 +225,8 @@ Notebooks provide interactive exploration of the rule engine and data generation
 
 - ✅ Phase 1: FastAPI backend with REST API
 - ✅ Phase 2: React frontend foundation with routing, dashboard, and API client
-- ⏳ Phase 3: ReactFlow visual editor with drag-and-drop nodes
-- ⏳ Phase 4: Transaction test runner with execution tracing
+- ✅ Phase 3: ReactFlow visual editor with drag-and-drop nodes, live testing, and CRUD operations
+- ⏳ Phase 4: Transaction test runner with batch testing and analytics
 - ⏳ Phase 5: Docker setup and production deployment
 
 ## License

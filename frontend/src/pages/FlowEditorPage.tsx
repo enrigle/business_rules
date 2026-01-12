@@ -1,50 +1,188 @@
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { rulesAPI } from '../api';
+import { useFlowEditor } from '../hooks/useFlowEditor';
+import FlowCanvas from '../components/flow-editor/FlowCanvas';
+import RuleEditPanel from '../components/flow-editor/RuleEditPanel';
+import EvaluationOverlay from '../components/flow-editor/EvaluationOverlay';
+import type { EvaluationTrace } from '../types';
 
 export default function FlowEditorPage() {
+  const queryClient = useQueryClient();
+  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+  const [showNewRulePanel, setShowNewRulePanel] = useState(false);
+
+  const {
+    rules,
+    loadRules,
+    rulesToFlow,
+    isDirty,
+    setDirty,
+  } = useFlowEditor();
+
+  // Compute nodes and edges from rules
+  const { nodes, edges } = useMemo(() => {
+    if (rules.length === 0) return { nodes: [], edges: [] };
+    return rulesToFlow(rules);
+  }, [rules, rulesToFlow]);
+
+  // Fetch rules from API
+  const { data: rulesData, isLoading, error } = useQuery({
+    queryKey: ['rules'],
+    queryFn: () => rulesAPI.getRules('v1'),
+  });
+
+  // Reorder mutation
+  const reorderMutation = useMutation({
+    mutationFn: (ruleIds: string[]) => rulesAPI.reorderRules(ruleIds, 'v1'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rules'] });
+      setDirty(false);
+    },
+  });
+
+  // Load rules into flow editor when data arrives
+  useEffect(() => {
+    if (rulesData?.rules) {
+      loadRules(rulesData.rules);
+    }
+  }, [rulesData, loadRules]);
+
+  // Handle node click
+  const handleNodeClick = useCallback((nodeId: string) => {
+    if (nodeId.startsWith('rule-')) {
+      setSelectedRuleId(nodeId.replace('rule-', ''));
+      setShowNewRulePanel(false);
+    }
+  }, []);
+
+  // Handle evaluation (temporarily disabled - highlighting feature needs refactor)
+  const handleEvaluate = useCallback(
+    (trace: EvaluationTrace) => {
+      console.log('Evaluation trace:', trace);
+      // TODO: Implement highlighting without Zustand state
+    },
+    []
+  );
+
+  // Handle save reordering
+  const handleSaveOrder = () => {
+    const ruleIds = rules.map((r) => r.id);
+    reorderMutation.mutate(ruleIds);
+  };
+
+  // Get selected rule
+  const selectedRule = selectedRuleId ? rules.find((r) => r.id === selectedRuleId) : null;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Visual Flow Editor</h1>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Back to Dashboard
-          </Link>
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow z-20">
+        <div className="max-w-full mx-auto py-4 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-gray-900">Visual Rule Editor</h1>
+            {isDirty && (
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
+                Unsaved changes
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setShowNewRulePanel(true);
+                setSelectedRuleId(null);
+              }}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm"
+            >
+              + New Rule
+            </button>
+
+            {isDirty && (
+              <button
+                onClick={handleSaveOrder}
+                disabled={reorderMutation.isPending}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm disabled:opacity-50"
+              >
+                {reorderMutation.isPending ? 'Saving...' : 'Save Order'}
+              </button>
+            )}
+
+            <Link
+              to="/dashboard"
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium text-sm"
+            >
+              Dashboard
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="bg-white shadow sm:rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              ReactFlow Editor - Coming in Phase 3
-            </h3>
-            <div className="space-y-4 text-sm text-gray-600">
-              <p>
-                This page will contain a visual drag-and-drop flowchart editor built with ReactFlow.
-              </p>
-              <div className="bg-gray-50 rounded-md p-4">
-                <h4 className="font-medium text-gray-900 mb-2">Planned Features:</h4>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Visual node-based rule editor (Entry, Rule, Outcome, Exit nodes)</li>
-                  <li>Drag-and-drop interface for creating and connecting rules</li>
-                  <li>Auto-layout with dagre algorithm</li>
-                  <li>Inline editing panel for node properties</li>
-                  <li>Real-time validation and error highlighting</li>
-                  <li>YAML export/import for rule configurations</li>
-                  <li>Color-coded execution trace overlay (green/red/gray paths)</li>
-                </ul>
-              </div>
-              <p className="pt-4">
-                The visual editor will convert YAML rules into an interactive flowchart, allowing
-                you to visually see and edit the decision tree structure.
-              </p>
+      {/* Main content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Flow canvas */}
+        <div className="flex-1 relative h-full">
+          {isLoading && (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-gray-500">Loading rules...</div>
             </div>
+          )}
+
+          {error && (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-red-500">Error loading rules</div>
+            </div>
+          )}
+
+          {!isLoading && !error && nodes.length > 0 && (
+            <>
+              <FlowCanvas
+                initialNodes={nodes}
+                initialEdges={edges}
+                onNodeClick={handleNodeClick}
+              />
+              <EvaluationOverlay onEvaluate={handleEvaluate} onClear={() => console.log('Clear highlights')} />
+            </>
+          )}
+        </div>
+
+        {/* Edit panel */}
+        {(selectedRule || showNewRulePanel) && (
+          <RuleEditPanel
+            rule={selectedRule || null}
+            isNew={showNewRulePanel}
+            onClose={() => {
+              setSelectedRuleId(null);
+              setShowNewRulePanel(false);
+            }}
+          />
+        )}
+      </div>
+
+      {/* Footer stats */}
+      <footer className="bg-white border-t px-6 py-2 z-20">
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <div className="flex items-center gap-6">
+            <span>
+              <strong>{rules.length}</strong> rules
+            </span>
+            <span>
+              <strong>{rules.filter((r) => r.outcome.decision === 'ALLOW').length}</strong> ALLOW
+            </span>
+            <span>
+              <strong>{rules.filter((r) => r.outcome.decision === 'REVIEW').length}</strong> REVIEW
+            </span>
+            <span>
+              <strong>{rules.filter((r) => r.outcome.decision === 'BLOCK').length}</strong> BLOCK
+            </span>
+          </div>
+          <div className="text-xs text-gray-500">
+            Drag nodes to reorder • Click rule nodes to edit
           </div>
         </div>
-      </main>
+      </footer>
     </div>
   );
 }

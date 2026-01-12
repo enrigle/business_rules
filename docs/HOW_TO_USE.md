@@ -1,6 +1,6 @@
 # Fraud Detection Rules - Quick Start Guide
 
-**For fraud analysts**: This guide shows you how to create and test fraud detection rules using a simple web interface.
+**For fraud analysts**: This guide shows you how to create and test fraud detection rules using a visual flowchart editor.
 
 ---
 
@@ -10,7 +10,14 @@
 
 1. **Install the application** (ask your IT team if you need help):
    ```bash
-   pip install -e ".[streamlit,dev]"
+   # Install Python dependencies
+   pip install -r requirements.txt
+   pip install --no-deps -e .
+
+   # Install React frontend dependencies
+   cd frontend
+   npm install
+   cd ..
    ```
 
 2. **Set up AI explanations** (optional but recommended):
@@ -19,78 +26,105 @@
    - Replace `your-api-key-here` with your actual API key
    - (Without this, you'll still see which rule matched, but won't get human-readable explanations)
 
-3. **Start the application**:
+3. **Start the backend API**:
    ```bash
-   cd streamlit
-   streamlit run app.py
+   cd backend
+   python main.py
    ```
+   Backend runs at http://localhost:8000
 
-4. **Open your browser** to: http://localhost:8501
+4. **Start the React frontend** (in a new terminal):
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   Frontend runs at http://localhost:5173
+
+5. **Open your browser** to: http://localhost:5173
 
 ---
 
-## Example: Add Your First Rule
+## Using the Visual Flow Editor
+
+### Navigate to the Flow Editor
+
+1. Open http://localhost:5173 in your browser
+2. You'll see the Dashboard with rule statistics
+3. Click **"Visual Rule Editor"** in the navigation
+
+### Understanding the Flow Diagram
+
+When the editor loads, you'll see a flowchart with:
+
+**Node Types:**
+- **Blue nodes** (top) = Transaction Input - shows the data fields being evaluated
+- **Orange/Pink nodes** = Condition Groups - shows AND/OR logic with the actual conditions
+- **Purple nodes** = Rule Cards - displays the rule name, matched outcome, and decision
+- **Green/Yellow/Red nodes** (bottom) = Decision Outputs - final ALLOW/REVIEW/BLOCK outcomes
+
+**Flow Direction:**
+- Rules flow **top to bottom** (first match wins)
+- "Match" edges point down to the decision
+- "No match" edges point right to the next rule
+- The **DEFAULT** rule is always last and catches everything
+
+### Example: Add Your First Rule
 
 Let's create a rule that flags expensive electronics purchases from new accounts for manual review.
 
 **Scenario**: You want to review any electronics purchase over $2,000 from accounts less than 30 days old.
 
-### Step 1: Open Rule Builder
+### Step 1: Click "New Rule"
 
-- Click on "🔧 Rule Builder" in the sidebar
-- You'll see a 4-step wizard
+- Click the **"+ New Rule"** button in the top toolbar
+- A side panel opens on the right
 
 ### Step 2: Name Your Rule
 
-- **Rule ID**: Auto-generated (e.g., `RULE_004`) - don't change this
 - **Rule Name**: Type `Expensive electronics from new accounts`
-- Click "Next Step →"
+- The Rule ID is auto-generated (e.g., `RULE_010`)
 
 ### Step 3: Add Conditions
 
-Add three conditions by filling out the form and clicking "➕ Add Condition" each time:
+Click **"+ Add"** under the Conditions section for each condition:
 
 **Condition 1:**
 - Field: `transaction_amount`
 - Operator: `>`
 - Value: `2000`
-- Click "➕ Add Condition"
 
 **Condition 2:**
 - Field: `merchant_category`
 - Operator: `==`
 - Value: `electronics` (select from dropdown)
-- Click "➕ Add Condition"
 
 **Condition 3:**
 - Field: `account_age_days`
 - Operator: `<`
 - Value: `30`
-- Click "➕ Add Condition"
 
-You should now see all three conditions listed. Click "Next Step →"
+You should now see all three conditions listed in the panel.
 
-### Step 4: Set Logic and Outcome
+### Step 4: Set Logic
 
-**Logic section:**
-- Select `AND` (all three conditions must be true)
+- **Logic**: Select `AND` (all three conditions must be true)
+- This appears between your conditions in the panel
+
+### Step 5: Set Outcome
 
 **Outcome section:**
-- Decision: Select `REVIEW` (send to human reviewer)
-- Risk Score: Set to `75` (medium-high risk)
-- Reason: Type `High-value electronics purchase from new account`
+- **Decision**: Click the `REVIEW` button (yellow badge)
+- **Risk Score**: Drag the slider to `75`
+- **Reason**: Type `High-value electronics purchase from new account`
 
-Click "Next Step →"
+### Step 6: Save
 
-### Step 5: Preview and Save
-
-- Review the summary on the left
-- Check the YAML preview on the right
-- If everything looks good, click "💾 Save Rule"
-- You'll see a success message with confetti!
+- Click the **"Create"** button at the bottom of the panel
+- The new rule appears in the flowchart automatically
+- You'll see it positioned before the DEFAULT rule
 
 **What just happened?**
-The app saved this rule to `config/rules_v1.yaml`:
+The app saved this rule to `config/rules_v1.yaml` and created a backup:
 
 ```yaml
 - id: "RULE_004"
@@ -116,24 +150,68 @@ The app saved this rule to `config/rules_v1.yaml`:
 
 ## How to Test Your Rule
 
-### Quick Verification (Dashboard)
+### Visual Testing with Live Evaluation
 
-1. Click "📊 Dashboard" in the sidebar
-2. Look below the "🚧 Dashboard features coming in Phase 3" section
-3. You should see "Current Rules (4)" or similar (the number shows how many rules you have)
-4. Find your rule in the list and click to expand it
-5. Verify:
-   - ✅ Name is correct
-   - ✅ All three conditions are listed
-   - ✅ Decision shows "REVIEW"
-   - ✅ Risk score shows "75/100"
+The Flow Editor has a built-in **Test Transaction** panel for instant rule testing.
 
-**Troubleshooting**: If you see "⚠️ No rules file found":
-- Stop the Streamlit app (press Ctrl+C in the terminal)
-- Restart it: `cd streamlit && streamlit run app.py`
-- Alternatively, open `config/rules_v1.yaml` in a text editor to verify your rule was saved
+### Step 1: Open Test Panel
 
-### Full Testing (Web App)
+- Click the **"🧪 Test Transaction"** button in the top-right corner of the flow editor
+- A test panel appears with a transaction form
+
+### Step 2: Enter Test Data
+
+You can either:
+
+**Option A: Enter manually**
+- Amount: `2500`
+- Velocity (24h): `2`
+- Merchant Category: Select `electronics`
+- Check **"New Device"** box: ✓
+- Uncheck "Country Mismatch"
+
+**Option B: Generate random**
+- Click **"🎲 Random"** button
+- The form fills with realistic random values
+- Adjust values to match your test scenario
+
+### Step 3: Run Evaluation
+
+- Click **"▶ Evaluate"** button
+- Wait 1-2 seconds for processing
+
+### Step 4: View Results
+
+The flowchart **highlights the matching path in green**:
+- Transaction Input node glows green
+- Matched Condition Group glows green
+- Matched Rule Card glows green
+- Decision Output (REVIEW/ALLOW/BLOCK) glows green
+
+**Result box shows:**
+- **Decision**: REVIEW (yellow badge)
+- **Risk Score**: 75
+- **Matched Rule**: Expensive electronics from new accounts
+
+### Step 5: Test Different Scenarios
+
+Try these variations to verify your rule works correctly:
+
+**Should trigger REVIEW (match your rule):**
+- Amount: $2500, Category: electronics, Account Age: 15 days → ✓ REVIEW
+
+**Should NOT trigger REVIEW (no match):**
+- Amount: $1500, Category: electronics, Account Age: 15 days → ✗ (amount too low)
+- Amount: $2500, Category: retail, Account Age: 15 days → ✗ (wrong category)
+- Amount: $2500, Category: electronics, Account Age: 60 days → ✗ (account too old)
+
+For each test:
+1. Modify the transaction values
+2. Click "▶ Evaluate"
+3. Check which rule lights up
+4. Click "Clear Highlights" to reset
+
+### Dashboard Verification
 
 Test your rule with real transaction data using the Test Transactions page.
 
@@ -262,14 +340,25 @@ This is useful for performance testing or analyzing rule effectiveness across la
 
 **Check rule order**: Rules are checked top-to-bottom. The first rule that matches wins and stops checking.
 
-To view rule order:
-1. Go to Dashboard
-2. Rules are listed in order (1, 2, 3, etc.)
+**To view rule order in the Visual Editor:**
+1. Navigate to the **Visual Rule Editor**
+2. Look at the flowchart - rules flow top to bottom
 3. Your rule should be BEFORE the "DEFAULT" rule
+4. If another rule appears first and matches, yours won't run
 
-If your rule is after DEFAULT, it will never run because DEFAULT catches everything.
+**To reorder rules:**
+1. In the Visual Editor, **drag any rule node vertically** (up or down)
+2. Release the mouse - the rule moves to the new position
+3. An **"Unsaved changes"** badge appears in the top bar
+4. Click **"Save Order"** button to persist the new order
+5. The flowchart rebuilds with the new sequence
+6. Changes saved to `config/rules_v1.yaml`
 
-To fix: Open `config/rules_v1.yaml` in a text editor and move your rule above the DEFAULT rule.
+**Tips:**
+- More specific rules should be higher (checked first)
+- Broader catch-all rules should be lower
+- DEFAULT must always be last (cannot be moved)
+- If you drag a rule too low, it may never trigger
 
 ---
 
@@ -305,24 +394,41 @@ Two ways to check:
 
 ### "Can I edit a rule after saving it?"
 
-**Currently**: You need to edit the YAML file directly
-1. Open `config/rules_v1.yaml` in a text editor
-2. Find your rule by searching for its name or ID
-3. Make your changes
-4. Save the file
-5. Refresh the Dashboard to see changes
+**Yes!** Use the visual editor:
 
-**Coming soon**: The web app will have an "Edit Rule" button in the Dashboard.
+1. Navigate to the **Visual Rule Editor**
+2. **Click on any purple rule node** in the flowchart
+3. The edit panel opens on the right with the rule details
+4. Make your changes:
+   - Update conditions (add, remove, modify)
+   - Change logic (AND → OR)
+   - Adjust risk score
+   - Modify decision (ALLOW → REVIEW → BLOCK)
+   - Update reason text
+5. Click **"Save"** button
+6. The flowchart updates automatically
+7. Changes are saved to `config/rules_v1.yaml` with automatic backup
+
+**Note**: The DEFAULT rule opens in read-only mode and cannot be edited or deleted.
 
 ---
 
 ### "What if I want to delete a rule?"
 
-1. Open `config/rules_v1.yaml` in a text editor
-2. Find your rule (search for the rule name or ID)
-3. Delete the entire rule block (from `- id:` to the end of the `reason:` line)
-4. Save the file
-5. **Important**: Don't delete the DEFAULT rule - it's required
+**Use the visual editor:**
+
+1. Navigate to the **Visual Rule Editor**
+2. **Click on the rule node** you want to delete
+3. The edit panel opens on the right
+4. Click the **"Delete"** button at the bottom
+5. Confirm the deletion when prompted
+6. The rule disappears from the flowchart
+7. Changes saved to `config/rules_v1.yaml` with automatic backup
+
+**Important**:
+- The DEFAULT rule **cannot be deleted** (required for system to function)
+- Deleted rules are backed up in `config/backups/` with timestamp
+- To restore a deleted rule, check the backup files
 
 ---
 

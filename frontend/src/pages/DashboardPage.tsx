@@ -123,7 +123,7 @@ export default function DashboardPage() {
             <h3 className="text-lg leading-6 font-medium text-gray-900">Rules Configuration</h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
               Version: {rulesConfig?.version || 'v1'} | Decision Logic:{' '}
-              {rulesConfig?.decision_logic || 'first-match-wins'}
+              {'first-match-wins'}
             </p>
           </div>
           <div className="border-t border-gray-200">

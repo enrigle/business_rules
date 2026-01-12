@@ -3,18 +3,10 @@
  * These types ensure type safety between frontend and backend
  */
 
-// Enums
-export enum Decision {
-  ALLOW = "ALLOW",
-  REVIEW = "REVIEW",
-  BLOCK = "BLOCK",
-}
+// Type unions (verbatimModuleSyntax doesn't allow enums)
+export type Decision = "ALLOW" | "REVIEW" | "BLOCK";
 
-export enum Confidence {
-  HIGH = "HIGH",
-  MEDIUM = "MEDIUM",
-  LOW = "LOW",
-}
+export type Confidence = "HIGH" | "MEDIUM" | "LOW";
 
 // Rule Configuration Types
 export interface Condition {

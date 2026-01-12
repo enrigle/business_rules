@@ -18,6 +18,73 @@ Transaction Data
 [3. Final Output] ──→ Combined result for human review
 ```
 
+## Frontend Architecture (Phase 3 Complete)
+
+### Visual Rule Editor with ReactFlow
+
+Modern React-based flowchart editor for building and visualizing fraud detection rules.
+
+**Technology Stack**:
+- React 19.2 + TypeScript
+- ReactFlow 12.10 (visual flowchart library)
+- Zustand (state management)
+- TanStack Query (server state)
+- dagre (auto-layout algorithm)
+- Vite (build tool)
+
+**Components**:
+
+1. **FlowCanvas** (`frontend/src/components/flow-editor/FlowCanvas.tsx`)
+   - ReactFlow wrapper with custom node types
+   - Controls (zoom, pan, minimap)
+   - Background grid
+   - Smooth-step edge routing
+
+2. **Custom Nodes**:
+   - **TransactionInputNode**: Start node showing input fields (blue)
+   - **RuleNode**: Rule cards with conditions, risk score, decision (purple)
+   - **ConditionGroupNode**: AND/OR logic visualization (orange/pink)
+   - **DecisionOutputNode**: Terminal nodes for ALLOW/REVIEW/BLOCK (green/yellow/red)
+
+3. **RuleEditPanel** (`frontend/src/components/flow-editor/RuleEditPanel.tsx`)
+   - Side panel for editing selected rule
+   - Condition builder (field, operator, value)
+   - Outcome editor (risk score slider, decision buttons)
+   - Real-time validation
+   - CRUD operations via REST API
+
+4. **EvaluationOverlay** (`frontend/src/components/flow-editor/EvaluationOverlay.tsx`)
+   - Floating test panel
+   - Transaction input form
+   - Random transaction generator
+   - Live evaluation with trace visualization
+   - Path highlighting (green glow on matched rule)
+
+5. **State Management** (`frontend/src/hooks/useFlowEditor.ts`)
+   - Zustand store for flow state
+   - Rules ↔ ReactFlow conversion
+   - dagre auto-layout (280x120 nodes, 150px spacing)
+   - Drag-drop reordering (Y-position determines rule order)
+   - Evaluation trace highlighting
+
+**Visual Flow**:
+```
+[Transaction Input]
+        ↓
+[Condition Group (AND/OR)]
+        ↓ match
+    [Rule Node]
+        ↓
+[Decision Output]
+```
+
+**First-Match-Wins Visualization**:
+- Rules cascade top-to-bottom
+- "No match" edges flow right to next condition
+- "Match" edges flow down to decision output
+- DEFAULT rule always last (cannot be deleted)
+- Evaluation highlights winning path in green
+
 ## Components
 
 ### 1. Rule Engine (`src/rule_engine.py`)
