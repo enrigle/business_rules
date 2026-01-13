@@ -5,6 +5,7 @@ import {
   Controls,
   MiniMap,
   MarkerType,
+  ReactFlowProvider,
   type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -20,6 +21,8 @@ interface FlowCanvasProps {
   initialNodes: FlowNode[];
   initialEdges: FlowEdge[];
   onNodeClick?: (nodeId: string) => void;
+  onNodesChange?: (changes: any[]) => void;
+  onEdgesChange?: (changes: any[]) => void;
 }
 
 const nodeTypes = {
@@ -29,10 +32,12 @@ const nodeTypes = {
   decisionOutput: DecisionOutputNode,
 } as NodeTypes;
 
-export default function FlowCanvas({
+function FlowCanvasContent({
   initialNodes,
   initialEdges,
   onNodeClick,
+  onNodesChange,
+  onEdgesChange,
 }: FlowCanvasProps) {
   // Style edges with markers and colors
   const styledEdges = useMemo(
@@ -62,16 +67,20 @@ export default function FlowCanvas({
   );
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', minHeight: '500px' }}>
       <ReactFlow
         nodes={initialNodes || []}
         edges={styledEdges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.1}
         maxZoom={1.5}
+        // Important for stability in some environments
+        translateExtent={[[-1000, -1000], [2000, 2000]]}
       >
         <Background color="#e5e7eb" gap={16} />
         <Controls />
@@ -94,5 +103,13 @@ export default function FlowCanvas({
         />
       </ReactFlow>
     </div>
+  );
+}
+
+export default function FlowCanvas(props: FlowCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <FlowCanvasContent {...props} />
+    </ReactFlowProvider>
   );
 }

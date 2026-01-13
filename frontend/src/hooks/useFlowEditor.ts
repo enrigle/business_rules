@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { create } from 'zustand';
 import dagre from 'dagre';
+import { applyNodeChanges, applyEdgeChanges, type NodeChange, type EdgeChange } from '@xyflow/react';
 import type { Rule, EvaluationTrace, Decision } from '../types';
 import type {
   FlowNode,
@@ -26,6 +27,7 @@ interface FlowEditorStore extends FlowEditorState {
   setRules: (rules: Rule[]) => void;
   setEvaluationTrace: (trace: EvaluationTrace | null) => void;
   setDirty: (dirty: boolean) => void;
+  loadRules: (rules: Rule[], nodes: FlowNode[], edges: FlowEdge[]) => void;
   reset: () => void;
 }
 
@@ -39,9 +41,10 @@ const useFlowEditorStore = create<FlowEditorStore>((set) => ({
   setNodes: (nodes) => set((state) => ({ nodes: typeof nodes === 'function' ? nodes(state.nodes) : nodes })),
   setEdges: (edges) => set((state) => ({ edges: typeof edges === 'function' ? edges(state.edges) : edges })),
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
-  setRules: (rules) => set({ rules, isDirty: true }),
+  setRules: (rules) => set({ rules }),
   setEvaluationTrace: (trace) => set({ evaluationTrace: trace }),
   setDirty: (dirty) => set({ isDirty: dirty }),
+  loadRules: (rules, nodes, edges) => set({ rules, nodes, edges, isDirty: false }),
   reset: () =>
     set({
       nodes: [],
@@ -55,7 +58,19 @@ const useFlowEditorStore = create<FlowEditorStore>((set) => ({
 
 // Hook
 export function useFlowEditor() {
-  const store = useFlowEditorStore();
+  const nodes = useFlowEditorStore((state) => state.nodes);
+  const edges = useFlowEditorStore((state) => state.edges);
+  const rules = useFlowEditorStore((state) => state.rules);
+  const isDirty = useFlowEditorStore((state) => state.isDirty);
+  const evaluationTrace = useFlowEditorStore((state) => state.evaluationTrace);
+  const selectedNodeId = useFlowEditorStore((state) => state.selectedNodeId);
+
+  const setNodes = useFlowEditorStore((state) => state.setNodes);
+  const setEdges = useFlowEditorStore((state) => state.setEdges);
+  const setRules = useFlowEditorStore((state) => state.setRules);
+  const setDirty = useFlowEditorStore((state) => state.setDirty);
+  const setEvaluationTrace = useFlowEditorStore((state) => state.setEvaluationTrace);
+  const setSelectedNodeId = useFlowEditorStore((state) => state.setSelectedNodeId);
 
   // Convert rules to ReactFlow nodes and edges
   const rulesToFlow = useCallback(
@@ -186,33 +201,47 @@ export function useFlowEditor() {
       });
 
       // 4. Apply dagre layout
-      const g = new dagre.graphlib.Graph();
-      g.setGraph({ rankdir: 'TB', ranksep: RANK_SPACING, nodesep: NODE_SPACING });
-      g.setDefaultEdgeLabel(() => ({}));
+      try {
+        // console.log('Applying dagre layout. dagre:', !!dagre, 'graphlib:', !!dagre?.graphlib);
+        if (dagre && dagre.graphlib) {
+          const g = new dagre.graphlib.Graph();
+          g.setGraph({ rankdir: 'TB', ranksep: RANK_SPACING, nodesep: NODE_SPACING });
+          g.setDefaultEdgeLabel(() => ({}));
 
-      nodes.forEach((node) => {
-        g.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
-      });
+          nodes.forEach((node) => {
+            g.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+          });
 
-      edges.forEach((edge) => {
-        g.setEdge(edge.source, edge.target);
-      });
+          edges.forEach((edge) => {
+            g.setEdge(edge.source, edge.target);
+          });
 
-      dagre.layout(g);
+          dagre.layout(g);
 
-      // Apply calculated positions
-      const layoutedNodes = nodes.map((node) => {
-        const nodeWithPosition = g.node(node.id);
-        return {
-          ...node,
-          position: {
-            x: nodeWithPosition.x - NODE_WIDTH / 2,
-            y: nodeWithPosition.y - NODE_HEIGHT / 2,
-          },
-        };
-      });
+          // Apply calculated positions
+          const layoutedNodes = nodes.map((node) => {
+            const nodeWithPosition = g.node(node.id);
+            // Fallback if node not found in graph (should not happen)
+            if (!nodeWithPosition) return node;
 
-      return { nodes: layoutedNodes, edges };
+            return {
+              ...node,
+              position: {
+                x: nodeWithPosition.x - NODE_WIDTH / 2,
+                y: nodeWithPosition.y - NODE_HEIGHT / 2,
+              },
+            };
+          });
+
+          return { nodes: layoutedNodes, edges };
+        } else {
+          console.warn('Dagre not loaded or missing graphlib', dagre);
+          return { nodes, edges };
+        }
+      } catch (err) {
+        console.error('Error calculating flow layout:', err);
+        return { nodes, edges };
+      }
     },
     []
   );
@@ -220,43 +249,30 @@ export function useFlowEditor() {
   // Highlight path based on evaluation trace
   const highlightPath = useCallback(
     (trace: EvaluationTrace) => {
-      const { nodes, edges } = store;
-
-      // Find matched rule from trace
       const matchedRuleId = trace.evaluated_rules.find((re) => re.matched)?.rule_id;
-      if (!matchedRuleId) return;
 
-      // Highlight nodes
-      const highlightedNodes = nodes.map((node) => {
+      if (!matchedRuleId) {
+        setEvaluationTrace(trace);
+        return;
+      }
+
+      setNodes((prevNodes) => prevNodes.map((node) => {
         if (node.type === 'rule' && (node.data as RuleNodeData).rule.id === matchedRuleId) {
           return { ...node, data: { ...node.data, isHighlighted: true } };
         }
+
         if (
           node.type === 'conditionGroup' &&
           (node.data as ConditionGroupNodeData).ruleId === matchedRuleId
         ) {
           return { ...node, data: { ...node.data, isHighlighted: true } };
         }
-        // Highlight decision output based on matched rule's decision
-        const matchedRule = trace.evaluated_rules.find((re) => re.matched);
-        if (
-          node.type === 'decisionOutput' &&
-          matchedRule &&
-          (node.data as DecisionOutputNodeData).decision ===
-            store.rules.find((r) => r.id === matchedRule.rule_id)?.outcome.decision
-        ) {
-          return { ...node, data: { ...node.data, isHighlighted: true } };
-        }
-        return node;
-      });
 
-      // Highlight edges in path
-      const highlightedEdges = edges.map((edge) => {
-        // Edge from input to first rule/condition
-        if (edge.source === 'transaction-input') {
-          return { ...edge, animated: true, isHighlighted: true };
-        }
-        // Edge to/from matched rule
+        return node;
+      }));
+
+      setEdges((prevEdges) => prevEdges.map(edge => {
+        if (edge.source === 'transaction-input') return { ...edge, animated: true, isHighlighted: true };
         if (
           edge.source === `rule-${matchedRuleId}` ||
           edge.target === `rule-${matchedRuleId}` ||
@@ -266,45 +282,53 @@ export function useFlowEditor() {
           return { ...edge, animated: true, isHighlighted: true };
         }
         return edge;
-      });
+      }));
 
-      store.setNodes(highlightedNodes);
-      store.setEdges(highlightedEdges);
-      store.setEvaluationTrace(trace);
+      setEvaluationTrace(trace);
     },
-    [store]
+    [setNodes, setEdges, setEvaluationTrace]
   );
 
   // Clear all highlights
   const clearHighlights = useCallback(() => {
-    const { nodes, edges } = store;
-
-    const clearedNodes = nodes.map((node) => ({
+    setNodes((nodes) => nodes.map((node) => ({
       ...node,
       data: { ...node.data, isHighlighted: false },
-    }));
+    })));
 
-    const clearedEdges = edges.map((edge) => ({
+    setEdges((edges) => edges.map((edge) => ({
       ...edge,
       animated: false,
       isHighlighted: false,
-    }));
+    })));
 
-    store.setNodes(clearedNodes);
-    store.setEdges(clearedEdges);
-    store.setEvaluationTrace(null);
-  }, [store]);
+    setEvaluationTrace(null);
+  }, [setNodes, setEdges, setEvaluationTrace]);
+
+  const storeLoadRules = useFlowEditorStore((state) => state.loadRules);
 
   // Load rules and generate flow
   const loadRules = useCallback(
     (rules: Rule[]) => {
       const { nodes, edges } = rulesToFlow(rules);
-      store.setRules(rules);
-      store.setNodes(nodes);
-      store.setEdges(edges);
-      store.setDirty(false);
+      storeLoadRules(rules, nodes, edges);
     },
-    [rulesToFlow, store]
+    [rulesToFlow, storeLoadRules]
+  );
+
+  // Handle React Flow changes (dragging, selection, dimensions, etc.)
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      setNodes((nds: FlowNode[]) => applyNodeChanges(changes, nds) as FlowNode[]);
+    },
+    [setNodes]
+  );
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      setEdges((eds: FlowEdge[]) => applyEdgeChanges(changes, eds) as FlowEdge[]);
+    },
+    [setEdges]
   );
 
   // Update rule positions based on drag (for reordering)
@@ -328,11 +352,24 @@ export function useFlowEditor() {
   );
 
   return {
-    ...store,
+    nodes,
+    edges,
+    selectedNodeId,
+    rules,
+    evaluationTrace,
+    isDirty,
+    setNodes,
+    setEdges,
+    setSelectedNodeId,
+    setRules,
+    setEvaluationTrace,
+    setDirty,
     rulesToFlow,
     highlightPath,
     clearHighlights,
     loadRules,
     updateRuleOrder,
+    onNodesChange,
+    onEdgesChange,
   };
 }
